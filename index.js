@@ -3,11 +3,48 @@
  */
 //dependencies
 const http = require('http');
+const https = require('https');
 const url = require('url');
 const StringDecoder = require('string_decoder').StringDecoder;
-var config = require('./config')
+var config = require('./config');
+const fs = require('fs');
+
+var _data = require('./lib/data');
+
+_data.delete('test', 'newFile', function (err) {
+    console.log(err);
+});
+
 //The server should respond to all requests with a string to all request
-var server = http.createServer(function (req, res) {
+//instantiate http server
+var httpServer = http.createServer(function (req, res) {
+    unifiedServer(req, res);
+});
+
+//start the server on port 3000
+httpServer.listen(config.httpPort, function () {
+    console.log(`Server is listening on port ${config.httpPort} in ${config.envName} environment`);
+});
+
+var httpsServerOptions = {
+    // 'key':fs.readFileSync('./https/key.pem'),//create using open ssl
+    //'cert':fs.readFileSync('./https/cert.pem')
+};
+
+//instantitate  the HTTPS Server
+var httpsServer = https.createServer(httpsServerOptions, function (req, res) {
+    unifiedServer(req, res);
+});
+
+
+//start the https server
+httpsServer.listen(config.httpsPort, function () {
+    console.log(`Server is listening on port ${config.httpsPort} in ${config.envName} environment`);
+});
+
+// All The server logic for bot http and https server
+var unifiedServer = function (req, res) {
+
     //get url and parse it
     var parsedURL = url.parse(req.url, true); //true also parses the query string data
 
@@ -48,7 +85,7 @@ var server = http.createServer(function (req, res) {
         }
 
         //Route the request to handler specified in the router
-        chosenHandler(data, function (statusCode = 200, payload = {}) {
+        chosenHandler(data, function (statusCode, payload) {
 
             // default status code to 200
             statusCode = typeof (statusCode) == 'number' ? statusCode : 200;
@@ -63,26 +100,19 @@ var server = http.createServer(function (req, res) {
             res.setHeader('Content-Type', 'application/json');
 
             res.writeHead(statusCode);
-            res.end(payloadString);        
+            res.end(payloadString);
         });
     });
 
     //log the request path
     console.log('Request recieved on path:' + trimmedPath);
-});
-
-//start the server on port 3000
-server.listen(config.port, function () {
-    console.log(`Server is listening on port ${config.port} in ${config.envName} environment`);
-});
+};
 
 //Define Handlers
 var handlers = {};
-handlers.sample = function (data, callback) {
+handlers.ping = function (data, callback) {
     //callback a http status code and a payload object
-    callback(406, {
-        'name': 'sample handler'
-    })
+    callback(200)
 };
 //Not found handler
 handlers.notFound = function (data, callback) {
@@ -91,5 +121,5 @@ handlers.notFound = function (data, callback) {
 
 // Define a request router
 var router = {
-    'sample': handlers.sample
+    'ping': handlers.ping
 };
